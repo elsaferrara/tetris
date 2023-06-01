@@ -1,0 +1,3 @@
+[submodule "pico_bsp"]
+	path = pico_bsp
+	url = https://github.com/elsaferrara/pico_bsp
