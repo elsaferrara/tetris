@@ -1,0 +1,2 @@
+pragma Warnings (Off, "no returning annotation available for ""Shift_Right""");
+pragma Warnings (Off, "no returning annotation available for ""Shift_Left""");

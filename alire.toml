@@ -1,0 +1,7 @@
+name = "tetris"
+description = "Tetris example for Raspberry Pico"
+version = "0.1.0-dev"
+
+authors = ["Elsa Ferrara"]
+maintainers = ["Elsa Ferrara <ferrara@adacore.com>"]
+maintainers-logins = ["elsaferrara"]
