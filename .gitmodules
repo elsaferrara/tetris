@@ -1,3 +1,6 @@
 [submodule "pico_bsp"]
 	path = pico_bsp
 	url = https://github.com/elsaferrara/pico_bsp
+[submodule "rp2040_hal"]
+	path = rp2040_hal
+	url = https://github.com/elsaferrara/rp2040_hal
