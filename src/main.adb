@@ -14,6 +14,7 @@ is
      pragma Warnings (Off, """pico.pimoroni.display.cursor_y"" is set by ""Put"" but not used after the call");
       pragma Warnings (Off, """pico.pimoroni.display.cursor_x"" is set by ""Draw_Board"" but not used after the call");
      pragma Warnings (Off, """pico.pimoroni.display.cursor_y"" is set by ""Draw_Board"" but not used after the call");
+  pragma Warnings (Off, """Rnd_64"" is set by ""Clock"" but not used after the call");
 
    Zoom : constant := 6;
    --  Number of pixel to represent one block in the game
@@ -34,10 +35,9 @@ is
    --  Draw on the OLED screen the board and the falling piece
 
    --  Simple random generator.
-   Rnd : Unsigned_32;
+   Rnd : Unsigned_64;
 
-   procedure Random_Piece (Nbr : in out Unsigned_32; P : out Piece)
-     with Post => Piece_Within_Board (P);
+   procedure Random_Piece (Nbr : in out Unsigned_64; P : out Piece);
    --  Generate a new random piece
 
    Next_Piece : Piece;
@@ -47,8 +47,8 @@ is
 
    State : Game_State := Game_State'First;
    Rotation_Count : Natural;
-   Next_Fall : Unsigned_32;
-   Now       : Unsigned_32;
+   Next_Fall : Unsigned_64;
+   Now       : Unsigned_64;
 
    -----------------
    -- Fall_Period --
@@ -93,8 +93,6 @@ is
                --  Portrait layout
                --  Set_Pixel ((Integer (Y_Pos + J - 1 + Y_Start), Integer (X_Pos + I - 1 + X_Start)));
 
-               --  Arduboy.Screen.Draw_Pixel ((X_Pos + I - 1 + X_Start,
-               --                              Y_Pos + J - 1 + Y_Start));
             end loop;
          end loop;
       end Draw_Block;
@@ -215,7 +213,7 @@ is
    -- Random_Piece --
    ------------------
 
-   procedure Random_Piece (Nbr : in out Unsigned_32; P : out Piece) is
+   procedure Random_Piece (Nbr : in out Unsigned_64; P : out Piece) is
    begin
       Nbr := Nbr * 1103515245 + 12345;
       P := (S => Cell'Val (1 + ((Nbr / 65536) mod 7)),
@@ -239,9 +237,17 @@ is
       RP.Timer.Clock (RP.Timer.Time (Rnd));
    end Reset_Game;
 
+   procedure Block_Piece
+     with Pre => Cur_State = Piece_Falling and Valid_Configuration,
+       Post => Cur_State = Piece_Blocked and Valid_Configuration;
+   procedure Block_Piece is
+      begin
+      Cur_State := Piece_Blocked;
+   end Block_Piece;
+
+
    Success : Boolean;
    Unused : Boolean;
-   --  B_State : Button_State;
 begin
 
    --  Setup_Game;
@@ -253,19 +259,7 @@ begin
 
    --  Game loop
    loop
-      pragma Loop_Invariant (Piece_Within_Board(Next_Piece));
-      pragma Assert (if State = Piece_Fall then Valid_Configuration);
-
-      --  Wait_Next_Frame (B_State);
-      --  if (Rnd mod 4) = 0 then
-      --     Pico.Pimoroni.Display.Set_Color (Yellow);
-      --     elsif (Rnd mod 4) = 1 then
-      --
-      --     elsif (Rnd mod 4) = 2 then
-      --     Pico.Pimoroni.Display.Set_Color (Pink);
-      --     else  Pico.Pimoroni.Display.Set_Color (Green);
-      --  end if;
-
+      pragma Loop_Invariant (if State = Piece_Fall then Cur_State = Piece_Falling and Valid_Configuration);
      RP.Device.Timer.Delay_Milliseconds(60);
      Pico.Pimoroni.Display.Update (Clear => True);
       Pico.Pimoroni.Display.Buttons.Poll_Buttons;
@@ -291,9 +285,7 @@ begin
 
          when New_Piece =>
             --  Add a new piece
-            pragma Assert (Piece_Within_Board(Next_Piece));
             Cur_Piece  := Next_Piece;
-            pragma Assert (Valid_Configuration);
             Random_Piece (Rnd, Next_Piece);
             Cur_State := Piece_Falling;
             Rotation_Count := 0;
@@ -304,7 +296,8 @@ begin
                State := Game_Over;
             else
                State := Piece_Fall;
-            pragma Assert (Valid_Configuration);
+
+
             end if;
 
             Draw_Board (True);
@@ -334,10 +327,9 @@ begin
 
             if Now >= Next_Fall then
 
-               Next_Fall := Next_Fall + Fall_Period
+               Next_Fall := Next_Fall + Unsigned_64 (Fall_Period
                  (Speed_Up => False,
-                  --  Speed_Up => Pressed (Down),
-                  Level    => Level_Nbr);
+                  Level    => Level_Nbr));
 
                Rotation_Count := 0;
 
@@ -345,9 +337,9 @@ begin
                Do_Action (Move_Down, Success);
 
                if not Success then
-                  --  Done with that piece
-                  Cur_State := Piece_Blocked;
 
+                  --  Done with that piece
+                  Block_Piece;
                   Include_Piece_In_Board;
                   Delete_Complete_Lines (Nbr_Of_Complete_Lines);
 
@@ -367,6 +359,7 @@ begin
                   end if;
 
                   State := New_Piece;
+
                end if;
             end if;
 
