@@ -6,7 +6,7 @@ SPARK tetris example for Raspberry Pico Display
 
 Clone the repo and go to the main directory:
 ```console
-$ git clone https://github.com/elsaferrara/tetris
+$ git clone --recurse-submodules https://github.com/elsaferrara/tetris
 $ cd tetris
 ```
 
