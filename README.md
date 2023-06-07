@@ -27,7 +27,8 @@ $ mkdir bin
 $ ~/pico-sdk/tools/elf2uf2/build/elf2uf2 -v obj/main bin/main.uf2
 ```
 
-Then you have to plug the board while pressing the BOOTSEL button. After that you can put your file in the Raspberry Pico folder and play !
+Plug the board **while pressing the BOOTSEL button**. 
+After that, you can put your file in the Raspberry Pico folder and play !
 
 
 ![image](demo.jpg)
