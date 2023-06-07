@@ -58,7 +58,7 @@ is
                          return Unsigned_32
    is
       Interval : constant Unsigned_32 :=
-        ((11 - Level mod 11) * 30);
+        ((11 - Level mod 11) * 15000);
    begin
       return (if Speed_Up then Interval / 3 else Interval);
    end Fall_Period;
@@ -145,6 +145,7 @@ is
          end case;
       end Draw_Piece;
    begin
+
 
       Pico.Pimoroni.Display.Set_Color (White);
 
@@ -248,22 +249,33 @@ is
 
    Success : Boolean;
    Unused : Boolean;
+
+   Release_Time : RP.Timer.Time;
+   Period : constant := 100;
+
 begin
 
    --  Setup_Game;
+
    RP.Clock.Initialize (Pico.XOSC_Frequency);
    RP.Device.Timer.Enable;
    Pico.Pimoroni.Display.Initialize;
    Reset_Game;
    Random_Piece (Rnd, Next_Piece);
 
+   RP.Timer.Clock (Release_Time);
    --  Game loop
    loop
+
       pragma Loop_Invariant (if State = Piece_Fall then Cur_State = Piece_Falling and Valid_Configuration);
-     RP.Device.Timer.Delay_Milliseconds(60);
-     Pico.Pimoroni.Display.Update (Clear => True);
+
+      --  RP.Device.Timer.Delay_Milliseconds(60);
+      Pico.Pimoroni.Display.Update (Clear => True);
+      Release_Time := RP.Timer.Get_Deadline (Release_Time, Period);
+      RP.Timer.Busy_Wait_Until (Release_Time);
       Pico.Pimoroni.Display.Buttons.Poll_Buttons;
       RP.Timer.Clock (RP.Timer.Time (Now));
+
 
       case State is
          when Pre_Game =>
@@ -368,9 +380,10 @@ begin
          when Game_Over =>
             --  Lost!
             Draw_Board (False);
-            Set_Text_Cursor (7, 20);
+            Set_Color(White);
+            Set_Text_Cursor (20, 20);
             Put ("GAME");
-            Set_Text_Cursor (7, 35);
+            Set_Text_Cursor (20, 35);
             Put ("OVER");
 
             if Just_Pressed (B) then
