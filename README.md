@@ -4,7 +4,7 @@ SPARK tetris example for Raspberry Pico Display
 
 # Build and try the demo
 
-Download the tool to convert ELF file to uf2 file
+Download the tool to convert ELF file to uf2 file :
 ```console
 $ git clone https://github.com/raspberrypi/pico-sdk.git
 $ pico-sdk/tools/elf2uf2
@@ -14,7 +14,7 @@ $ cmake ..
 $ make
 ```
 
-Clone the repo and go to the main directory:
+Clone the repo and go to the main directory :
 ```console
 $ git clone --recurse-submodules https://github.com/elsaferrara/tetris
 $ cd tetris
