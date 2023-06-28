@@ -267,7 +267,9 @@ begin
    --  Game loop
    loop
 
-      pragma Loop_Invariant (if State = Piece_Fall then Cur_State = Piece_Falling and Valid_Configuration);
+      pragma Loop_Invariant (if State = Piece_Fall
+                             then Cur_State = Piece_Falling
+                             and Valid_Configuration);
 
       --  RP.Device.Timer.Delay_Milliseconds(60);
       Pico.Pimoroni.Display.Update (Clear => True);
@@ -308,8 +310,6 @@ begin
                State := Game_Over;
             else
                State := Piece_Fall;
-
-
             end if;
 
             Draw_Board (True);
