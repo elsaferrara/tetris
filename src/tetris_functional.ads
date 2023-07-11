@@ -145,19 +145,19 @@ is
    function Piece_Within_Board (P : Piece) return Boolean
    is (case P.S is
           when O => P.Y in Y_Coord and then P.X in Y_Coord
-           and then P.Y in Y_Coord and then P.X + 1 in X_Coord
-           and then P.Y + 1 in Y_Coord and then P.X in X_Coord
-           and then P.Y + 1 in Y_Coord and then P.X + 1 in X_Coord,
-         when I =>
-           (for all Y in I_Delta =>
-              (for all X in I_Delta =>
-                   (if Possible_I_Shapes (P.D) (Y, X)
-                    then P.Y + Y in Y_Coord and then  P.X + X in X_Coord))),
-         when Three_Shape =>
-           (for all Y in Three_Delta =>
-              (for all X in Three_Delta =>
-                   (if Possible_Three_Shapes (P.S, P.D) (Y, X)
-                    then P.Y + Y in Y_Coord and then P.X + X in X_Coord))));
+       and then P.Y in Y_Coord and then P.X + 1 in X_Coord
+       and then P.Y + 1 in Y_Coord and then P.X in X_Coord
+       and then P.Y + 1 in Y_Coord and then P.X + 1 in X_Coord,
+          when I =>
+         (for all Y in I_Delta =>
+            (for all X in I_Delta =>
+                 (if Possible_I_Shapes (P.D) (Y, X)
+                  then P.Y + Y in Y_Coord and then  P.X + X in X_Coord))),
+          when Three_Shape =>
+         (for all Y in Three_Delta =>
+            (for all X in Three_Delta =>
+                 (if Possible_Three_Shapes (P.S, P.D) (Y, X)
+                  then P.Y + Y in Y_Coord and then P.X + X in X_Coord))));
 
    function No_Overlap (B : Board; P : Piece) return Boolean
    is (case P.S is

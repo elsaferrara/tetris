@@ -7,14 +7,14 @@ with RP.Device;
 with RP.Clock;
 
 procedure Main
-with SPARK_Mode => On
+  with SPARK_Mode => On
 is
 
-         pragma Warnings (Off, """pico.pimoroni.display.cursor_x"" is set by ""Put"" but not used after the call");
-     pragma Warnings (Off, """pico.pimoroni.display.cursor_y"" is set by ""Put"" but not used after the call");
-      pragma Warnings (Off, """pico.pimoroni.display.cursor_x"" is set by ""Draw_Board"" but not used after the call");
-     pragma Warnings (Off, """pico.pimoroni.display.cursor_y"" is set by ""Draw_Board"" but not used after the call");
-  pragma Warnings (Off, """Rnd_64"" is set by ""Clock"" but not used after the call");
+   pragma Warnings (Off, """pico.pimoroni.display.cursor_x"" is set by ""Put"" but not used after the call");
+   pragma Warnings (Off, """pico.pimoroni.display.cursor_y"" is set by ""Put"" but not used after the call");
+   pragma Warnings (Off, """pico.pimoroni.display.cursor_x"" is set by ""Draw_Board"" but not used after the call");
+   pragma Warnings (Off, """pico.pimoroni.display.cursor_y"" is set by ""Draw_Board"" but not used after the call");
+   pragma Warnings (Off, """Rnd_64"" is set by ""Clock"" but not used after the call");
 
    Zoom : constant := 6;
    --  Number of pixel to represent one block in the game
@@ -23,25 +23,39 @@ is
                          return Unsigned_32;
    --  Time to wait between each game step
 
-   Level_Nbr    : Unsigned_32;
-   Score        : Unsigned_32;
+   subtype Unsigned_31 is Unsigned_32 range Unsigned_32'First ..
+     Unsigned_32 (Integer_32'Last);
+
+   subtype Level_Nbr_Type is Unsigned_32 range 0 .. 10;
+
+   Level_Nbr    : Level_Nbr_Type;
+   Score        : Unsigned_31;
 
    Line_Counter : Unsigned_32;
    --  Used to compute the level
 
+   subtype Complete_Lines_Type is Unsigned_32 range 0 .. 4;
+
    Nbr_Of_Complete_Lines : Unsigned_32;
 
-   procedure Draw_Board (With_Piece : Boolean);
+   procedure Draw_Board (With_Piece : Boolean)
+        with Pre  =>
+       (if With_Piece then Valid_Configuration)
+       and then Next_Piece_Prop (Next_Piece);
    --  Draw on the OLED screen the board and the falling piece
 
    --  Simple random generator.
    Rnd : Unsigned_64;
 
-   procedure Random_Piece (Nbr : in out Unsigned_64; P : out Piece);
+   procedure Random_Piece (Nbr : in out Unsigned_64; P : out Piece)
+      with Post => Next_Piece_Prop (P);
    --  Generate a new random piece
 
    Next_Piece : Piece;
    --  Next piece to be inserted in the game
+
+   function Next_Piece_Prop (P : Piece) return Boolean is
+     (P.X = X_Size / 2 and then P.Y = Y_Coord'First);
 
    type Game_State is (Pre_Game, New_Piece, Piece_Fall, Game_Over);
 
@@ -49,6 +63,8 @@ is
    Rotation_Count : Natural;
    Next_Fall : Unsigned_64;
    Now       : Unsigned_64;
+
+   procedure Update_Score (Num_Completed_Lines : Complete_Lines_Type);
 
    -----------------
    -- Fall_Period --
@@ -71,10 +87,26 @@ is
       X_Start : constant := 5;
       Y_Start : constant := 5;
 
-      procedure Draw_Block (X : Integer_16; Y : Integer_16);
+      procedure Draw_Block (X : Integer_16; Y : Integer_16)
+        with Pre =>
+          X >= 0 and then Y >= 0
+        and then (X - X_Coord'First) < Integer_16'Last / Zoom
+        and then (Y - Y_Coord'First) < Integer_16'Last / Zoom
+        and then Zoom * (X - X_Coord'First) <= Screen_Width - Zoom - X_Start
+        and then Zoom * (Y - Y_Coord'First) <= Screen_Height - Zoom - Y_Start
+        and then Zoom * (X - X_Coord'First) >= - X_Start
+        and then Zoom * (Y - Y_Coord'First) >= - Y_Start
+      ;
+        --  with Pre => X >= -1 and then X <= Screen_Height and then Zoom * (X - X_Coord'First) >= Zoom - 1 + X_Start
+        --  and then Y >= -1 and then Y <= Screen_Width and then Zoom * (Y - Y_Coord'First) >= Zoom - 1 + Y_Start
+        --  and then  X <= (Screen_Height - X_Start) / Zoom + (X_Coord'First - 1)
+        --  and then Y <= (Screen_Height - Y_Start) / Zoom + (Y_Coord'First - 1)
+
+
       procedure Draw_Piece (P        : Piece;
-                            Offset_X : Integer_16 := 0;
-                            Offset_Y : Integer_16 := 0);
+                            Next_Piece_Mode : Boolean := False)
+        with Pre => (if Next_Piece_Mode then Next_Piece_Prop (P)
+             else Piece_Within_Board (P));
 
       ----------------
       -- Draw_Block --
@@ -102,9 +134,10 @@ is
       ----------------
 
       procedure Draw_Piece (P        : Piece;
-                            Offset_X : Integer_16 := 0;
-                            Offset_Y : Integer_16 := 0)
+                            Next_Piece_Mode : Boolean := False)
       is
+         Offset_X : Integer_16 := (if Next_Piece_Mode then 7 else 0);
+         Offset_Y : Integer_16 := (if Next_Piece_Mode then 1 else 0);
       begin
          case P.S is
             when O =>
@@ -205,9 +238,8 @@ is
       if With_Piece then
          Draw_Piece (Cur_Piece);
       end if;
-
       --  Preview of the next piece displayed to the right of the board
-      Draw_Piece (Next_Piece, Offset_X => 7, Offset_Y => 1);
+      Draw_Piece (Next_Piece, Next_Piece_Mode => True);
    end Draw_Board;
 
    ------------------
@@ -246,6 +278,23 @@ is
       Cur_State := Piece_Blocked;
    end Block_Piece;
 
+   ------------------
+   -- Update_Score --
+   ------------------
+
+   procedure Update_Score (Num_Completed_Lines : Complete_Lines_Type) is
+      Multiplier : constant array (Complete_Lines_Type) of Unsigned_32 :=
+        (0, 4, 10, 30, 120);
+      Increment : Unsigned_32 :=
+        Multiplier (Num_Completed_Lines) * (Level_Nbr + 1);
+
+   begin
+      if Unsigned_31'Last - Increment < Score then
+         Score := Unsigned_31'Last;
+      else
+         Score := Score + Increment;
+      end if;
+   end Update_Score;
 
    Success : Boolean;
    Unused : Boolean;
@@ -270,6 +319,7 @@ begin
       pragma Loop_Invariant (if State = Piece_Fall
                              then Cur_State = Piece_Falling
                              and Valid_Configuration);
+      pragma Loop_Invariant (Next_Piece_Prop (Next_Piece));
 
       --  RP.Device.Timer.Delay_Milliseconds(60);
       Pico.Pimoroni.Display.Update (Clear => True);
@@ -310,9 +360,10 @@ begin
                State := Game_Over;
             else
                State := Piece_Fall;
+               Draw_Board (True);
             end if;
 
-            Draw_Board (True);
+
 
          when Piece_Fall =>
            if Rotation_Count < 2 then
@@ -355,13 +406,12 @@ begin
                   Include_Piece_In_Board;
                   Delete_Complete_Lines (Nbr_Of_Complete_Lines);
 
-                  case Nbr_Of_Complete_Lines is
-                     when 1 => Score := Score + 4 * (Level_Nbr + 1);
-                     when 2 => Score := Score + 10 * (Level_Nbr + 1);
-                     when 3 => Score := Score + 30 * (Level_Nbr + 1);
-                     when 4 => Score := Score + 120 * (Level_Nbr + 1);
-                     when others => null;
-                  end case;
+                  --  A bit of a hack; we know one can't delete more than four
+                  --  lines at once, but SPARK doesn't know that here
+
+                  if Nbr_Of_Complete_Lines <= 4 then
+                     Update_Score (Nbr_Of_Complete_Lines);
+                  end if;
 
                   Line_Counter := Line_Counter + Nbr_Of_Complete_Lines;
 
