@@ -20,4 +20,8 @@ project Tetris is
           Pico_BSP.Linker_Switches;
    end Linker;
 
+   package Prove is
+     for Proof_Switches ("Ada") use ("--no-inlining", "--no-loop-unrolling");
+   end Prove;
+
 end Tetris;
